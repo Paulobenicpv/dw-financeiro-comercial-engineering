@@ -1,0 +1,39 @@
+# Credenciais
+.env
+.env.*
+!.env.example
+
+# Ambientes Python
+.venv/
+.venv-*/
+venv/
+env/
+
+# Power BI
+*.pbix
+*.pbit
+*.pbip
+
+# Pacotes/arquivos compactados
+*.zip
+
+# Credenciais e certificados
+*.pem
+*.key
+*.pfx
+*.p12
+credentials.json
+secrets.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/

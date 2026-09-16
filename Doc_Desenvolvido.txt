@@ -1,0 +1,7 @@
+Foi desenvolvido e validado um pipeline de Engenharia de Dados completo, 
+partindo de um banco OLTP PostgreSQL para uma camada de Source Contract com views padronizadas, 
+seguido de ETL Python incremental com controle por watermark, carga em Stage, validações de qualidade, 
+UPSERT, auditoria de cargas e atualização do Data Warehouse em Produção. 
+Também foram testados cenários de carga inicial, ausência de mudanças, atualização e inserção incremental, 
+garantindo que apenas os registros alterados fossem processados. Por fim, o pipeline foi integrado ao Prefect, 
+com deployment, retries, logs centralizados e agendamento diário às 06:00, permitindo execução e monitoramento automatizados do fluxo.

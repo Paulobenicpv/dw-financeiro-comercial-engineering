@@ -1,0 +1,71 @@
+entities:
+  clientes:
+    order: 10
+    source_schema: public
+    source_table: vw_etl_clientes
+    stage_table: lnd_dim_cliente
+    transform_sql: sql/transform_v2/10_dim_cliente.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_cliente_id]
+    required: [source_cliente_id, codigo_cliente, nome_cliente]
+    columns: [source_cliente_id, codigo_cliente, nome_cliente, segmento, porte, regiao, uf, cidade, status_cliente, dt_atualizacao]
+
+  produtos:
+    order: 20
+    source_schema: public
+    source_table: vw_etl_produtos
+    stage_table: lnd_dim_produto
+    transform_sql: sql/transform_v2/20_dim_produto.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_produto_id]
+    required: [source_produto_id, codigo_produto, produto]
+    nonnegative: [preco_lista, custo_padrao]
+    columns: [source_produto_id, codigo_produto, produto, categoria, subcategoria, preco_lista, custo_padrao, dt_atualizacao]
+
+  vendedores:
+    order: 30
+    source_schema: public
+    source_table: vw_etl_vendedores
+    stage_table: lnd_dim_vendedor
+    transform_sql: sql/transform_v2/30_dim_vendedor.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_vendedor_id]
+    required: [source_vendedor_id, codigo_vendedor, vendedor]
+    columns: [source_vendedor_id, codigo_vendedor, vendedor, regiao, equipe, cargo, data_admissao, dt_atualizacao]
+
+  vendas:
+    order: 40
+    source_schema: public
+    source_table: vw_etl_vendas
+    stage_table: lnd_fato_vendas
+    transform_sql: sql/transform_v2/40_fato_vendas.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_item_id]
+    required: [source_item_id, codigo_venda, data_venda, codigo_cliente, codigo_produto, codigo_vendedor, quantidade, preco_unitario]
+    positive: [quantidade]
+    nonnegative: [preco_unitario, percentual_desconto]
+    columns: [source_item_id, codigo_venda, data_venda, codigo_cliente, codigo_produto, codigo_vendedor, canal, quantidade, preco_unitario, percentual_desconto, forma_pagamento, prazo_recebimento_dias, status_venda, tipo_cliente, dt_atualizacao]
+
+  metas:
+    order: 50
+    source_schema: public
+    source_table: vw_etl_metas
+    stage_table: lnd_fato_metas
+    transform_sql: sql/transform_v2/50_fato_metas.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_meta_id]
+    required: [source_meta_id, codigo_meta, data_meta, codigo_vendedor, meta_receita]
+    nonnegative: [meta_receita, meta_margem, meta_novos_clientes]
+    columns: [source_meta_id, codigo_meta, data_meta, codigo_vendedor, meta_receita, meta_margem, meta_novos_clientes, dt_atualizacao]
+
+  despesas:
+    order: 60
+    source_schema: public
+    source_table: vw_etl_despesas
+    stage_table: lnd_fato_despesas
+    transform_sql: sql/transform_v2/60_fato_despesas.sql
+    watermark_column: dt_atualizacao
+    business_keys: [source_despesa_id]
+    required: [source_despesa_id, codigo_despesa, data_despesa, valor_despesa]
+    nonnegative: [valor_despesa]
+    columns: [source_despesa_id, codigo_despesa, data_despesa, centro_custo, tipo_despesa, classificacao, valor_despesa, dt_atualizacao]
