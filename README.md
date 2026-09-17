@@ -836,6 +836,31 @@ flowchart TD
     K -. Executa .-> C
     L -. Testa e valida .-> C
 ```
+## Evidências de execução
+
+### Dashboard — Power BI
+
+Visão analítica construída sobre o Data Warehouse financeiro e comercial.
+
+![Power BI Dashboard](docs/images/powerbi-dashboard.png)
+
+### Orquestração — Prefect
+
+Execução do pipeline monitorada pelo Prefect, com processamento das entidades, logs e controle de status.
+
+![Prefect Pipeline](docs/images/prefect-execution.png)
+
+### Containerização — Docker
+
+Prefect Server e pipeline Python executados através do Docker Compose, incluindo healthcheck do serviço de orquestração.
+
+![Docker Containers](docs/images/docker-containers.png)
+
+### Integração Contínua — GitHub Actions
+
+Pipeline de CI validando automaticamente compilação Python, testes com Pytest e construção da imagem Docker.
+
+![GitHub Actions CI](docs/images/github-actions.png)
 
 ---
 
