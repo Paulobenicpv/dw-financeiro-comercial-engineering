@@ -1,190 +1,552 @@
-# DW Financeiro Comercial — Engenharia de Dados + BI
+# DW Financeiro Comercial — Engenharia de Dados
 
-Projeto end-to-end de dados para um cenário financeiro/comercial, estruturado como uma solução de empresa: origem em banco de dados, ingestão incremental, staging, Data Warehouse dimensional, qualidade de dados, auditoria, orquestração com Prefect, Docker e consumo no Power BI.
+![CI](https://github.com/Paulobenicpv/dw-financeiro-comercial-engineering/actions/workflows/ci.yml/badge.svg)
+
+Projeto de Engenharia de Dados desenvolvido para simular uma arquitetura corporativa de dados financeiros e comerciais, desde a origem transacional até a disponibilização das informações para análise no Power BI.
+
+O projeto implementa ingestão incremental, Data Warehouse dimensional, controle de watermark, auditoria, qualidade de dados, orquestração com Prefect, execução com Docker e CI automatizado pelo GitHub Actions.
+
+---
 
 ## Arquitetura
 
-```mermaid
-flowchart LR
-    A[(Banco de Origem\nPostgreSQL)] -->|Extract incremental| B[Python ETL]
-    B -->|Upsert + id_carga| C[(Stage)]
-    C --> D{Data Quality}
-    D -->|Falha| E[Auditoria / Erro]
-    D -->|OK| F[Transformações SQL]
-    F --> G[(Produção / DW)]
-    G --> H[Views Analíticas]
-    H --> I[Power BI]
-    B -. auditoria .-> J[(controle_carga)]
-    D -. regras .-> K[(dq_resultado)]
-    L[Prefect] --> B
-    L --> D
-    L --> F
-    L --> I
+```text
+PostgreSQL OLTP
+oltp_financeiro_comercial
+        │
+        ▼
+Source Contract
+vw_etl_*
+        │
+        ▼
+Python ETL Incremental
+        │
+        ▼
+Stage / Landing
+        │
+        ├── Controle de Carga
+        ├── Watermark
+        └── Data Quality
+        │
+        ▼
+Data Warehouse
+dw_financeiro_comercial
+        │
+        ▼
+Views Analíticas
+        │
+        ▼
+Power BI Desktop
 ```
 
-## Stack
-
-- PostgreSQL: banco de origem e Data Warehouse
-- Python 3.12: ingestão, carga, auditoria e integração
-- SQLAlchemy + psycopg2: conectividade e transações
-- Prefect 3: orquestração, retries e agendamento
-- Docker / Docker Compose: ambiente reproduzível
-- Power BI: modelo semântico, DAX e visualização
-- Pytest + GitHub Actions: testes e CI
-
-## O que este projeto implementa
-
-- Extração banco-a-banco
-- Carga inicial full e depois incremental por `dt_atualizacao`
-- Controle de watermark por entidade
-- Upsert no Stage por chave de negócio
-- Rastreabilidade com `id_carga`, `dt_carga` e `sistema_origem`
-- Auditoria em `Stage.controle_carga`
-- Data Quality em `Stage.dq_resultado`
-- Bloqueio de Produção se regra crítica falhar
-- Upsert de dimensões e fatos
-- Chaves substitutas e modelo estrela
-- Views de monitoramento para o Power BI
-- Orquestração com retries via Prefect
-- Refresh opcional do Power BI Service ao final
-- Docker Compose para demo completa
-- CI para compilação e testes
-
-## Fluxo de execução
-
-1. Prefect inicia um `pipeline_run_id`.
-2. O pipeline lê o último watermark da entidade.
-3. Busca no banco de origem apenas dados novos/alterados.
-4. Executa validações antes da carga.
-5. Faz upsert no Stage.
-6. Executa regras SQL de Data Quality.
-7. Se falhar, grava `ERRO` e não publica em Produção.
-8. Se passar, transforma Stage → Produção.
-9. Só então avança o watermark.
-10. Ao final, opcionalmente solicita refresh do Power BI Service.
-
-## Estrutura
+A execução e a orquestração do pipeline são realizadas através de:
 
 ```text
-dw_financeiro_comercial_engineering/
-├── config/entities.yml
+Docker Compose
+   │
+   ├── Prefect Server
+   │      └── UI / Logs / Histórico
+   │
+   └── Pipeline Python
+          └── Deployment Prefect
+```
+
+---
+
+## Principais recursos
+
+O projeto possui:
+
+- Pipeline ETL/ELT desenvolvido em Python.
+- Extração incremental utilizando watermark.
+- Processamento independente por entidade.
+- Camada Source Contract através de views PostgreSQL.
+- Landing/Stage para processamento dos dados.
+- Data Warehouse dimensional.
+- Controle de cargas e auditoria.
+- Validações de Data Quality.
+- Estratégia de UPSERT.
+- Logs estruturados.
+- Orquestração com Prefect.
+- Retries automáticos em caso de falha.
+- Deployment e execução agendada.
+- Containerização com Docker.
+- Healthcheck do Prefect Server.
+- Docker Compose para gerenciamento dos serviços.
+- Testes automatizados com Pytest.
+- CI utilizando GitHub Actions.
+- Validação automática do Docker Build.
+- Proteção de credenciais através de variáveis de ambiente.
+
+---
+
+## Tecnologias
+
+**Engenharia de Dados**
+
+`Python` `SQL` `PostgreSQL` `SQLAlchemy` `Pandas`
+
+**Orquestração**
+
+`Prefect`
+
+**DevOps**
+
+`Docker` `Docker Compose` `Git` `GitHub` `GitHub Actions`
+
+**Qualidade**
+
+`Pytest` `Data Quality Checks` `Auditoria`
+
+**Analytics**
+
+`Power BI`
+
+---
+
+## Estrutura do projeto
+
+```text
+dw-financeiro-comercial-engineering/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── config/
+│   └── entities.yml
+│
 ├── docs/
-├── orchestration/prefect_flow.py
-├── powerbi/Financeiro Comercial.pbix
+│   ├── architecture.md
+│   ├── data_contract.md
+│   ├── docker_local.md
+│   └── runbook.md
+│
+├── orchestration/
+│   └── prefect_flow.py
+│
 ├── scripts/
+│   ├── bootstrap.py
+│   ├── check_connections.py
+│   └── run_pipeline.py
+│
 ├── sql/
 │   ├── bootstrap/
-│   ├── source_demo/
+│   ├── diagnostics/
+│   ├── source_contract/
+│   ├── source_seed/
 │   └── transform/
-├── src/dw_pipeline/
+│
+├── src/
+│   └── dw_pipeline/
+│       ├── audit.py
+│       ├── config.py
+│       ├── db.py
+│       ├── extract.py
+│       ├── load_stage.py
+│       ├── logging_config.py
+│       ├── pipeline.py
+│       ├── powerbi.py
+│       ├── quality.py
+│       └── transform.py
+│
 ├── tests/
+│
 ├── .env.example
+├── .gitignore
+├── .dockerignore
 ├── Dockerfile
 ├── docker-compose.yml
-└── requirements.txt
+├── requirements.txt
+└── README.md
 ```
 
-## Usar com o seu banco real
+---
 
-O projeto foi preparado para PostgreSQL na origem e PostgreSQL no DW. Se os dois bancos estiverem no mesmo servidor, ainda assim mantenha conexões separadas por segurança e clareza arquitetural.
+## Bancos de dados
 
-### 1. Ambiente Python
+O projeto utiliza dois bancos PostgreSQL.
+
+### Origem
+
+```text
+oltp_financeiro_comercial
+```
+
+Representa o sistema transacional da empresa.
+
+Principais entidades:
+
+```text
+clientes
+produtos
+vendedores
+vendas
+itens_venda
+metas
+despesas
+```
+
+### Data Warehouse
+
+```text
+dw_financeiro_comercial
+```
+
+Modelo dimensional destinado ao consumo analítico.
+
+Principais dimensões:
+
+```text
+dim_calendario
+dim_cliente
+dim_produto
+dim_vendedor
+```
+
+Principais fatos:
+
+```text
+fato_vendas
+fato_metas
+fato_despesas
+```
+
+---
+
+## Source Contract
+
+O ETL não depende diretamente das tabelas transacionais.
+
+Foi criada uma camada de contrato através das views:
+
+```text
+vw_etl_clientes
+vw_etl_produtos
+vw_etl_vendedores
+vw_etl_vendas
+vw_etl_metas
+vw_etl_despesas
+```
+
+Essa abordagem desacopla o pipeline da estrutura física do sistema de origem e cria uma interface estável para ingestão.
+
+---
+
+## Processamento incremental
+
+O pipeline utiliza controle de **watermark** baseado em data de atualização.
+
+Em cada execução são processados somente registros novos ou alterados desde a última carga bem-sucedida.
+
+Exemplo:
+
+```text
+1ª execução
+40.000 registros processados
+
+2ª execução
+0 registros alterados
+→ nenhuma carga desnecessária
+
+Registro atualizado na origem
+→ somente o registro alterado é reprocessado
+```
+
+Isso reduz processamento e aproxima o projeto de cenários reais de Engenharia de Dados.
+
+---
+
+## Data Quality
+
+Antes da disponibilização dos dados em Produção, o pipeline executa validações de qualidade.
+
+São verificadas situações como:
+
+```text
+Campos obrigatórios
+Duplicidade de chave de negócio
+Valores inválidos
+Valores negativos indevidos
+Integridade entre fatos e dimensões
+```
+
+Os resultados são registrados na tabela:
+
+```text
+Stage.dq_resultado
+```
+
+---
+
+## Auditoria
+
+Cada execução gera informações de auditoria, incluindo:
+
+```text
+ID da carga
+Data de início
+Data de término
+Duração
+Linhas processadas
+Linhas inseridas
+Linhas atualizadas
+Linhas rejeitadas
+Status
+Mensagem de erro
+```
+
+Essas informações permitem rastrear e monitorar as execuções do pipeline.
+
+---
+
+## Orquestração com Prefect
+
+O pipeline é orquestrado utilizando Prefect.
+
+O deployment utilizado é:
+
+```text
+dw-financeiro-comercial-producao
+```
+
+A execução está configurada para ocorrer diariamente às:
+
+```text
+06:00
+America/Sao_Paulo
+```
+
+O Prefect permite acompanhar:
+
+```text
+Execuções
+Status
+Logs
+Falhas
+Retries
+Histórico
+Tempo de processamento
+```
+
+---
+
+## Docker
+
+Os componentes de Engenharia de Dados são executados através do Docker Compose.
+
+Arquitetura local:
+
+```text
+Windows
+│
+├── PostgreSQL
+│   ├── oltp_financeiro_comercial
+│   └── dw_financeiro_comercial
+│
+└── Docker
+    ├── dwfc-prefect-server
+    └── dwfc-pipeline
+```
+
+Os containers acessam o PostgreSQL do host através de:
+
+```text
+host.docker.internal
+```
+
+---
+
+## Healthcheck
+
+O Prefect Server possui healthcheck configurado.
+
+O container do pipeline somente inicia quando a API do Prefect estiver saudável.
+
+```text
+Prefect Server inicia
+        ↓
+Healthcheck
+        ↓
+Healthy
+        ↓
+Pipeline inicia
+```
+
+---
+
+## CI — GitHub Actions
+
+O projeto possui pipeline de integração contínua executada automaticamente a cada `push` ou `pull request`.
+
+O CI realiza:
+
+```text
+Checkout do código
+        ↓
+Configuração do Python
+        ↓
+Instalação das dependências
+        ↓
+Validação de compilação
+        ↓
+Pytest
+        ↓
+Docker Build
+```
+
+Somente código validado passa por todas as etapas.
+
+---
+
+## Segurança
+
+Credenciais não são armazenadas no código-fonte.
+
+O projeto utiliza variáveis de ambiente:
+
+```text
+SOURCE_DB_USER
+SOURCE_DB_PASSWORD
+DW_DB_USER
+DW_DB_PASSWORD
+```
+
+O arquivo real:
+
+```text
+.env
+```
+
+é ignorado pelo Git.
+
+Somente o modelo:
+
+```text
+.env.example
+```
+
+é versionado.
+
+Nenhuma senha, token ou credencial real deve ser adicionada ao repositório.
+
+---
+
+## Configuração
+
+Crie o arquivo `.env` a partir do exemplo:
 
 ```bash
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
+cp .env.example .env
 ```
 
-### 2. Configure `.env`
+Configure suas próprias credenciais PostgreSQL.
+
+Exemplo:
 
 ```env
 SOURCE_DB_HOST=localhost
 SOURCE_DB_PORT=5432
-SOURCE_DB_NAME=erp_financeiro_comercial
-SOURCE_DB_USER=postgres
+SOURCE_DB_NAME=oltp_financeiro_comercial
+SOURCE_DB_USER=seu_usuario
 SOURCE_DB_PASSWORD=sua_senha
 
 DW_DB_HOST=localhost
 DW_DB_PORT=5432
 DW_DB_NAME=dw_financeiro_comercial
-DW_DB_USER=postgres
+DW_DB_USER=seu_usuario
 DW_DB_PASSWORD=sua_senha
 ```
 
-Não envie `.env` para o GitHub.
+---
 
-### 3. Mapeie as tabelas da origem
+## Executando com Docker
 
-Edite `config/entities.yml`. Se os nomes reais da sua origem forem diferentes de `clientes`, `produtos`, `vendedores`, `vendas`, `metas` e `despesas`, altere o mapeamento ali.
-
-### 4. Bootstrap do DW
-
-Os scripts são idempotentes e não usam `DROP TABLE`.
+Build:
 
 ```bash
-PYTHONPATH=src python scripts/bootstrap.py
+docker compose build pipeline
 ```
 
-### 5. Executar ETL
+Subir os serviços:
 
 ```bash
-PYTHONPATH=src python scripts/run_pipeline.py
+docker compose up -d
 ```
 
-### 6. Executar pelo Prefect
+Verificar:
 
 ```bash
-PYTHONPATH=src python orchestration/prefect_flow.py
+docker compose ps
 ```
 
-Para manter o fluxo servido e agendado, use no `.env`:
-
-```env
-PREFECT_SERVE=true
-PIPELINE_CRON=0 6 * * *
-PIPELINE_TIMEZONE=America/Sao_Paulo
-```
-
-## Docker — modo demonstração
-
-O Docker Compose sobe uma arquitetura isolada com dois PostgreSQLs:
-
-- `source-db`: banco transacional de origem
-- `dw-db`: Data Warehouse
-- `prefect-server`: observabilidade/orquestração
-- `pipeline`: ETL
+Logs:
 
 ```bash
-copy .env.example .env
-docker compose up --build
+docker compose logs -f pipeline
 ```
 
-No modo demo, `sql/source_demo/001_source.sql` gera dados sintéticos. Para o banco real, não use esse seed.
+Interface do Prefect:
 
-## Power BI
+```text
+http://127.0.0.1:4200
+```
 
-O seu PBIX atual está incluído na pasta `powerbi/`. Recomenda-se consumir apenas tabelas de Produção e views de monitoramento. `vw_qualidade_dados` e `vw_monitoramento_cargas` podem permanecer sem relacionamento com o modelo dimensional principal.
+---
 
-Se o relatório for publicado no Power BI Service, é possível habilitar refresh pós-pipeline com as variáveis `POWERBI_*`.
+## Testes
 
-## Política operacional
+Executar os testes localmente:
 
-- Erro de conexão: retry automático no Prefect
-- Data Quality crítico: Produção não é atualizada
-- Transformação falha: transação faz rollback
-- Watermark só avança após sucesso
-- Rerun é idempotente por upsert
-- Erro de refresh do Power BI não corrompe o DW
+```bash
+pytest -q
+```
 
-## Como apresentar no portfólio
+Ou:
 
-> Solução end-to-end de Engenharia de Dados e Business Intelligence com ingestão incremental banco-a-banco, camada Stage, Data Warehouse dimensional em PostgreSQL, auditoria de cargas, Data Quality, orquestração com Prefect, Docker, CI e Power BI.
+```bash
+PYTHONPATH=src pytest -q
+```
 
-## Atualização v2 — origem OLTP normalizada
+---
 
-A origem real do projeto é o banco `oltp_financeiro_comercial`, com `vendas` + `itens_venda` em modelo transacional normalizado. A camada `public.vw_etl_*` funciona como **data contract** entre o OLTP e o pipeline. Assim, alterações internas do OLTP não precisam quebrar o DW, desde que o contrato permaneça estável.
+## Camada analítica
 
-Fluxo final: `OLTP -> Source Contract Views -> Python incremental ETL -> Stage Landing -> Data Quality -> Produção/DW -> Views Analíticas -> Power BI`.
+O Data Warehouse disponibiliza views preparadas para consumo pelo Power BI:
+
+```text
+vw_financeiro_comercial
+vw_indicadores_financeiro_comercial
+vw_qualidade_dados
+```
+
+O relatório analítico foi desenvolvido no Power BI Desktop para análises financeiras, comerciais, metas, clientes, produtos e evolução temporal.
+
+---
+
+## Objetivo do projeto
+
+Este projeto foi desenvolvido como estudo prático e portfólio de Engenharia de Dados e Business Intelligence, aplicando conceitos utilizados em ambientes corporativos:
+
+```text
+Arquitetura de Dados
+ETL Incremental
+Data Warehouse
+Modelagem Dimensional
+Data Quality
+Observabilidade
+Orquestração
+Containerização
+CI/CD
+Analytics
+```
+
+---
+
+## Autor
+
+**Paulo Beni**
+
+Data & BI | Engenharia de Dados | Business Intelligence
+
+GitHub: [Paulobenicpv](https://github.com/Paulobenicpv)
