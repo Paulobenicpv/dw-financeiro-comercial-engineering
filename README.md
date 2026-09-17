@@ -4,77 +4,128 @@
 
 Projeto de Engenharia de Dados desenvolvido para simular uma arquitetura corporativa de dados financeiros e comerciais, desde a origem transacional até a disponibilização das informações para análise no Power BI.
 
-O projeto implementa ingestão incremental, Data Warehouse dimensional, controle de watermark, auditoria, qualidade de dados, orquestração com Prefect, execução com Docker e CI automatizado pelo GitHub Actions.
+A solução implementa ingestão incremental, Data Warehouse dimensional, controle de watermark, auditoria, qualidade de dados, orquestração com Prefect, containerização com Docker e integração contínua com GitHub Actions.
 
 ---
 
 ## Arquitetura
 
+```mermaid
+flowchart TD
+
+    A["PostgreSQL OLTP<br/>oltp_financeiro_comercial"]
+
+    B["Source Contract<br/>vw_etl_*"]
+
+    C["Pipeline Python<br/>ETL Incremental"]
+
+    D["Stage / Landing"]
+
+    D1["Controle de Carga"]
+    D2["Watermark"]
+    D3["Data Quality"]
+
+    E["Data Warehouse<br/>dw_financeiro_comercial"]
+
+    E1["Dimensões"]
+    E2["Fatos"]
+    E3["Views Analíticas"]
+
+    F["Power BI Desktop"]
+
+    G["Prefect<br/>Orquestração"]
+
+    H["Docker Compose<br/>Containerização"]
+
+    I["GitHub Actions<br/>CI"]
+
+    A --> B
+    B --> C
+    C --> D
+
+    D --> D1
+    D --> D2
+    D --> D3
+
+    D --> E
+
+    E --> E1
+    E --> E2
+    E --> E3
+
+    E3 --> F
+
+    G -. Orquestra .-> C
+    H -. Executa .-> C
+    I -. Valida .-> C
+```
+
+### Fluxo principal
+
 ```text
 PostgreSQL OLTP
-oltp_financeiro_comercial
-        │
-        ▼
+        ↓
 Source Contract
-vw_etl_*
-        │
-        ▼
+        ↓
 Python ETL Incremental
-        │
-        ▼
+        ↓
 Stage / Landing
-        │
-        ├── Controle de Carga
-        ├── Watermark
-        └── Data Quality
-        │
-        ▼
+        ↓
+Data Quality
+        ↓
 Data Warehouse
-dw_financeiro_comercial
-        │
-        ▼
+        ↓
 Views Analíticas
-        │
-        ▼
+        ↓
 Power BI Desktop
 ```
 
-A execução e a orquestração do pipeline são realizadas através de:
+### Orquestração
 
-```text
-Docker Compose
-   │
-   ├── Prefect Server
-   │      └── UI / Logs / Histórico
-   │
-   └── Pipeline Python
-          └── Deployment Prefect
+```mermaid
+flowchart LR
+
+    A["Docker Compose"] --> B["Prefect Server"]
+
+    A --> C["Pipeline Python"]
+
+    B --> D["Deployment Prefect"]
+
+    D --> C
+
+    C --> E["PostgreSQL OLTP"]
+
+    C --> F["Data Warehouse"]
+
+    B --> G["UI / Logs / Histórico"]
 ```
 
 ---
 
 ## Principais recursos
 
-O projeto possui:
+O projeto implementa:
 
-- Pipeline ETL/ELT desenvolvido em Python.
+- Pipeline ETL desenvolvido em Python.
 - Extração incremental utilizando watermark.
 - Processamento independente por entidade.
 - Camada Source Contract através de views PostgreSQL.
-- Landing/Stage para processamento dos dados.
+- Camada Landing/Stage.
 - Data Warehouse dimensional.
-- Controle de cargas e auditoria.
-- Validações de Data Quality.
 - Estratégia de UPSERT.
+- Controle de carga.
+- Auditoria de execuções.
+- Validações de Data Quality.
 - Logs estruturados.
 - Orquestração com Prefect.
-- Retries automáticos em caso de falha.
-- Deployment e execução agendada.
+- Retries automáticos.
+- Deployment Prefect.
+- Execução agendada.
 - Containerização com Docker.
+- Docker Compose.
 - Healthcheck do Prefect Server.
-- Docker Compose para gerenciamento dos serviços.
 - Testes automatizados com Pytest.
-- CI utilizando GitHub Actions.
+- Integração contínua com GitHub Actions.
 - Validação automática do Docker Build.
 - Proteção de credenciais através de variáveis de ambiente.
 
@@ -82,23 +133,23 @@ O projeto possui:
 
 ## Tecnologias
 
-**Engenharia de Dados**
+### Engenharia de Dados
 
 `Python` `SQL` `PostgreSQL` `SQLAlchemy` `Pandas`
 
-**Orquestração**
+### Orquestração
 
 `Prefect`
 
-**DevOps**
+### DevOps
 
 `Docker` `Docker Compose` `Git` `GitHub` `GitHub Actions`
 
-**Qualidade**
+### Qualidade
 
-`Pytest` `Data Quality Checks` `Auditoria`
+`Pytest` `Data Quality` `Auditoria`
 
-**Analytics**
+### Analytics
 
 `Power BI`
 
@@ -134,11 +185,14 @@ dw-financeiro-comercial-engineering/
 │   ├── bootstrap/
 │   ├── diagnostics/
 │   ├── source_contract/
+│   ├── source_demo/
 │   ├── source_seed/
-│   └── transform/
+│   ├── transform/
+│   └── transform_v2/
 │
 ├── src/
 │   └── dw_pipeline/
+│       ├── __init__.py
 │       ├── audit.py
 │       ├── config.py
 │       ├── db.py
@@ -151,12 +205,15 @@ dw-financeiro-comercial-engineering/
 │       └── transform.py
 │
 ├── tests/
+│   ├── test_config.py
+│   └── test_quality.py
 │
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
-├── .dockerignore
 ├── Dockerfile
 ├── docker-compose.yml
+├── Makefile
 ├── requirements.txt
 └── README.md
 ```
@@ -165,9 +222,9 @@ dw-financeiro-comercial-engineering/
 
 ## Bancos de dados
 
-O projeto utiliza dois bancos PostgreSQL.
+O projeto trabalha com dois bancos PostgreSQL.
 
-### Origem
+### Banco de origem
 
 ```text
 oltp_financeiro_comercial
@@ -193,7 +250,7 @@ despesas
 dw_financeiro_comercial
 ```
 
-Modelo dimensional destinado ao consumo analítico.
+Banco destinado ao consumo analítico.
 
 Principais dimensões:
 
@@ -216,9 +273,9 @@ fato_despesas
 
 ## Source Contract
 
-O ETL não depende diretamente das tabelas transacionais.
+O pipeline não depende diretamente da estrutura física das tabelas transacionais.
 
-Foi criada uma camada de contrato através das views:
+Foi criada uma camada de contrato através das seguintes views:
 
 ```text
 vw_etl_clientes
@@ -229,39 +286,96 @@ vw_etl_metas
 vw_etl_despesas
 ```
 
-Essa abordagem desacopla o pipeline da estrutura física do sistema de origem e cria uma interface estável para ingestão.
+Essa camada cria uma interface estável entre o sistema de origem e o processo de Engenharia de Dados.
+
+```mermaid
+flowchart LR
+
+    A["Tabelas OLTP"] --> B["Source Contract"]
+    B --> C["Pipeline Python"]
+
+    B --> D["vw_etl_clientes"]
+    B --> E["vw_etl_produtos"]
+    B --> F["vw_etl_vendedores"]
+    B --> G["vw_etl_vendas"]
+    B --> H["vw_etl_metas"]
+    B --> I["vw_etl_despesas"]
+```
 
 ---
 
 ## Processamento incremental
 
-O pipeline utiliza controle de **watermark** baseado em data de atualização.
+O pipeline utiliza controle de **watermark**, baseado na data de atualização dos registros.
 
 Em cada execução são processados somente registros novos ou alterados desde a última carga bem-sucedida.
 
 Exemplo:
 
 ```text
-1ª execução
+Carga inicial
 40.000 registros processados
 
-2ª execução
-0 registros alterados
-→ nenhuma carga desnecessária
+Nova execução sem alterações
+0 registros processados
 
-Registro atualizado na origem
-→ somente o registro alterado é reprocessado
+Alteração de um cliente
+1 registro reprocessado
 ```
 
-Isso reduz processamento e aproxima o projeto de cenários reais de Engenharia de Dados.
+Isso evita processamento desnecessário e aproxima a solução de arquiteturas utilizadas em ambientes corporativos.
+
+### Fluxo incremental
+
+```mermaid
+flowchart LR
+
+    A["Último Watermark"] --> B["Consulta Source Contract"]
+
+    B --> C{"Existem alterações?"}
+
+    C -- Não --> D["Carga finalizada"]
+
+    C -- Sim --> E["Stage"]
+
+    E --> F["Data Quality"]
+
+    F --> G["UPSERT Produção"]
+
+    G --> H["Atualiza Watermark"]
+```
+
+---
+
+## Stage / Landing
+
+A camada Stage recebe os dados antes da carga definitiva no Data Warehouse.
+
+Entre os principais objetos estão:
+
+```text
+controle_carga
+etl_watermark
+dq_resultado
+
+lnd_dim_cliente
+lnd_dim_produto
+lnd_dim_vendedor
+
+lnd_fato_vendas
+lnd_fato_metas
+lnd_fato_despesas
+```
+
+Essa camada permite separar ingestão, validação e disponibilização dos dados.
 
 ---
 
 ## Data Quality
 
-Antes da disponibilização dos dados em Produção, o pipeline executa validações de qualidade.
+Antes da disponibilização dos dados em Produção, o pipeline executa verificações de qualidade.
 
-São verificadas situações como:
+São avaliadas situações como:
 
 ```text
 Campos obrigatórios
@@ -271,17 +385,21 @@ Valores negativos indevidos
 Integridade entre fatos e dimensões
 ```
 
-Os resultados são registrados na tabela:
+Os resultados são registrados em:
 
 ```text
 Stage.dq_resultado
 ```
 
+O processo permite identificar problemas antes que os dados sejam disponibilizados para análise.
+
 ---
 
 ## Auditoria
 
-Cada execução gera informações de auditoria, incluindo:
+Cada execução gera informações de auditoria.
+
+Entre os dados registrados estão:
 
 ```text
 ID da carga
@@ -296,25 +414,31 @@ Status
 Mensagem de erro
 ```
 
-Essas informações permitem rastrear e monitorar as execuções do pipeline.
+Essas informações permitem rastrear o comportamento e o histórico das cargas.
 
 ---
 
 ## Orquestração com Prefect
 
-O pipeline é orquestrado utilizando Prefect.
+O pipeline é orquestrado utilizando **Prefect**.
 
-O deployment utilizado é:
+Flow:
+
+```text
+dw-financeiro-comercial
+```
+
+Deployment:
 
 ```text
 dw-financeiro-comercial-producao
 ```
 
-A execução está configurada para ocorrer diariamente às:
+Agendamento:
 
 ```text
-06:00
-America/Sao_Paulo
+Todos os dias às 06:00
+Timezone: America/Sao_Paulo
 ```
 
 O Prefect permite acompanhar:
@@ -333,7 +457,7 @@ Tempo de processamento
 
 ## Docker
 
-Os componentes de Engenharia de Dados são executados através do Docker Compose.
+A camada de Engenharia de Dados é executada através do Docker Compose.
 
 Arquitetura local:
 
@@ -345,11 +469,13 @@ Windows
 │   └── dw_financeiro_comercial
 │
 └── Docker
+    │
     ├── dwfc-prefect-server
+    │
     └── dwfc-pipeline
 ```
 
-Os containers acessam o PostgreSQL do host através de:
+Os containers acessam o PostgreSQL instalado no host através de:
 
 ```text
 host.docker.internal
@@ -361,86 +487,133 @@ host.docker.internal
 
 O Prefect Server possui healthcheck configurado.
 
-O container do pipeline somente inicia quando a API do Prefect estiver saudável.
+O pipeline só inicia após a API do Prefect estar disponível.
 
-```text
-Prefect Server inicia
-        ↓
-Healthcheck
-        ↓
-Healthy
-        ↓
-Pipeline inicia
+```mermaid
+flowchart LR
+
+    A["Prefect Server inicia"] --> B["Healthcheck"]
+
+    B --> C{"API saudável?"}
+
+    C -- Não --> B
+
+    C -- Sim --> D["Pipeline inicia"]
+
+    D --> E["Deployment disponível"]
 ```
+
+Isso reduz problemas de inicialização causados por dependências ainda indisponíveis.
 
 ---
 
 ## CI — GitHub Actions
 
-O projeto possui pipeline de integração contínua executada automaticamente a cada `push` ou `pull request`.
+O projeto possui integração contínua executada automaticamente através do GitHub Actions.
 
-O CI realiza:
+O workflow é disparado em:
+
+```text
+push
+pull_request
+```
+
+O pipeline de CI executa:
+
+```mermaid
+flowchart LR
+
+    A["Checkout"] --> B["Setup Python 3.12"]
+
+    B --> C["Instalação das dependências"]
+
+    C --> D["Compile Python"]
+
+    D --> E["Pytest"]
+
+    E --> F["Docker Build"]
+
+    F --> G["CI Success"]
+```
+
+As principais etapas são:
 
 ```text
 Checkout do código
-        ↓
 Configuração do Python
-        ↓
 Instalação das dependências
-        ↓
 Validação de compilação
-        ↓
 Pytest
-        ↓
 Docker Build
 ```
 
-Somente código validado passa por todas as etapas.
+O status atual do workflow pode ser acompanhado pelo badge no início deste README.
 
 ---
 
 ## Segurança
 
-Credenciais não são armazenadas no código-fonte.
+Credenciais reais não são armazenadas no código-fonte.
 
-O projeto utiliza variáveis de ambiente:
+O pipeline utiliza variáveis de ambiente como:
 
 ```text
 SOURCE_DB_USER
 SOURCE_DB_PASSWORD
+
 DW_DB_USER
 DW_DB_PASSWORD
 ```
 
-O arquivo real:
+O arquivo:
 
 ```text
 .env
 ```
 
-é ignorado pelo Git.
+é utilizado somente localmente e está incluído no `.gitignore`.
 
-Somente o modelo:
+Somente o arquivo:
 
 ```text
 .env.example
 ```
 
-é versionado.
+é versionado no GitHub.
 
-Nenhuma senha, token ou credencial real deve ser adicionada ao repositório.
+Nenhuma senha, token ou segredo real deve ser adicionada ao repositório.
 
 ---
 
 ## Configuração
 
-Crie o arquivo `.env` a partir do exemplo:
+Clone o projeto:
+
+```bash
+git clone https://github.com/Paulobenicpv/dw-financeiro-comercial-engineering.git
+```
+
+Entre na pasta:
+
+```bash
+cd dw-financeiro-comercial-engineering
+```
+
+Crie seu arquivo `.env` com base no exemplo.
+
+Linux/macOS:
 
 ```bash
 cp .env.example .env
 ```
 
-Configure suas próprias credenciais PostgreSQL.
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Depois configure suas próprias credenciais PostgreSQL.
 
 Exemplo:
 
@@ -456,13 +629,60 @@ DW_DB_PORT=5432
 DW_DB_NAME=dw_financeiro_comercial
 DW_DB_USER=seu_usuario
 DW_DB_PASSWORD=sua_senha
+
+STAGE_SCHEMA=Stage
+PROD_SCHEMA=Produção
+
+ENVIRONMENT=PRODUCAO
+ENTITIES_CONFIG=config/entities.yml
+LOG_LEVEL=INFO
+
+POWERBI_REFRESH_ENABLED=false
+```
+
+---
+
+## Executando com Python
+
+Crie o ambiente virtual:
+
+```bash
+python -m venv .venv
+```
+
+Ative o ambiente.
+
+PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Instale as dependências:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure o `PYTHONPATH`.
+
+PowerShell:
+
+```powershell
+$env:PYTHONPATH="$PWD\src"
+```
+
+Teste as conexões:
+
+```bash
+python scripts/check_connections.py
 ```
 
 ---
 
 ## Executando com Docker
 
-Build:
+Construir a imagem:
 
 ```bash
 docker compose build pipeline
@@ -474,19 +694,25 @@ Subir os serviços:
 docker compose up -d
 ```
 
-Verificar:
+Verificar os containers:
 
 ```bash
 docker compose ps
 ```
 
-Logs:
+Logs do pipeline:
 
 ```bash
 docker compose logs -f pipeline
 ```
 
-Interface do Prefect:
+Parar os serviços:
+
+```bash
+docker compose down
+```
+
+Interface local do Prefect:
 
 ```text
 http://127.0.0.1:4200
@@ -494,25 +720,33 @@ http://127.0.0.1:4200
 
 ---
 
-## Testes
+## Executando manualmente pelo Prefect
 
-Executar os testes localmente:
+Com o deployment ativo:
 
 ```bash
-pytest -q
+prefect deployment run "dw-financeiro-comercial/dw-financeiro-comercial-producao"
 ```
 
-Ou:
+A execução também pode ser iniciada através da interface do Prefect.
+
+---
+
+## Testes
+
+Executar os testes:
 
 ```bash
 PYTHONPATH=src pytest -q
 ```
 
+O GitHub Actions também executa automaticamente os testes a cada `push` e `pull_request`.
+
 ---
 
 ## Camada analítica
 
-O Data Warehouse disponibiliza views preparadas para consumo pelo Power BI:
+O Data Warehouse disponibiliza views preparadas para consumo analítico.
 
 ```text
 vw_financeiro_comercial
@@ -520,26 +754,137 @@ vw_indicadores_financeiro_comercial
 vw_qualidade_dados
 ```
 
-O relatório analítico foi desenvolvido no Power BI Desktop para análises financeiras, comerciais, metas, clientes, produtos e evolução temporal.
+Essas views são utilizadas como camada de consumo do Power BI.
+
+---
+
+## Power BI
+
+O relatório foi desenvolvido no Power BI Desktop.
+
+O projeto analítico contempla áreas como:
+
+```text
+Visão Executiva
+Análise Comercial
+Financeiro / DRE
+Metas & Performance
+Clientes & Produtos
+Análise Temporal
+Qualidade & Monitoramento
+```
+
+Entre os indicadores trabalhados estão:
+
+```text
+Faturamento
+Receita Bruta
+Lucro Bruto
+Margem Bruta
+Despesas
+Resultado Operacional
+Ticket Médio
+Metas
+Atingimento
+Clientes Atendidos
+Variação MoM
+```
+
+O arquivo `.pbix` não é versionado no GitHub.
+
+---
+
+## Fluxo completo da solução
+
+```mermaid
+flowchart TD
+
+    A["Sistema OLTP PostgreSQL"]
+
+    B["Source Contract"]
+
+    C["ETL Python Incremental"]
+
+    D["Stage / Landing"]
+
+    E["Data Quality"]
+
+    F["UPSERT"]
+
+    G["Data Warehouse"]
+
+    H["Views Analíticas"]
+
+    I["Power BI Desktop"]
+
+    J["Prefect"]
+
+    K["Docker"]
+
+    L["GitHub Actions"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+
+    J -. Orquestra .-> C
+    K -. Executa .-> C
+    L -. Testa e valida .-> C
+```
 
 ---
 
 ## Objetivo do projeto
 
-Este projeto foi desenvolvido como estudo prático e portfólio de Engenharia de Dados e Business Intelligence, aplicando conceitos utilizados em ambientes corporativos:
+Este projeto foi desenvolvido como portfólio prático de **Engenharia de Dados e Business Intelligence**, aplicando conceitos utilizados em ambientes corporativos.
+
+Entre os principais conceitos aplicados estão:
 
 ```text
 Arquitetura de Dados
 ETL Incremental
 Data Warehouse
 Modelagem Dimensional
+Source Contract
+Watermark
 Data Quality
+Auditoria
 Observabilidade
 Orquestração
 Containerização
-CI/CD
+Integração Contínua
 Analytics
 ```
+
+---
+
+## Status
+
+| Componente | Status |
+|---|---|
+| PostgreSQL OLTP | ✅ |
+| Source Contract | ✅ |
+| ETL Python | ✅ |
+| Carga incremental | ✅ |
+| Watermark | ✅ |
+| Stage / Landing | ✅ |
+| Data Quality | ✅ |
+| Data Warehouse | ✅ |
+| Auditoria | ✅ |
+| Prefect | ✅ |
+| Deployment | ✅ |
+| Agendamento | ✅ |
+| Docker | ✅ |
+| Healthcheck | ✅ |
+| Pytest | ✅ |
+| GitHub Actions | ✅ |
+| Docker Build no CI | ✅ |
+| Power BI Desktop | ✅ |
 
 ---
 
@@ -549,4 +894,4 @@ Analytics
 
 Data & BI | Engenharia de Dados | Business Intelligence
 
-GitHub: [Paulobenicpv](https://github.com/Paulobenicpv)
+GitHub: [@Paulobenicpv](https://github.com/Paulobenicpv)
