@@ -26,3 +26,6 @@ jobs:
 
       - name: Run tests
         run: PYTHONPATH=src pytest -q
+
+      - name: Build Docker image
+        run: docker build -t dw-financeiro-comercial-pipeline:ci .
